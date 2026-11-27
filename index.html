@@ -223,6 +223,14 @@ textarea{min-height:120px;resize:vertical;line-height:1.5}
 .pkq{display:flex;flex-direction:column;gap:2px;font-size:11.5px;font-weight:600;color:var(--muted);min-width:0}.pkq input{min-width:0}
 .pkedit{display:grid;grid-template-columns:96px 96px auto 1fr 32px;align-items:end;gap:8px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line)}.pkedit .qty{display:flex;gap:6px;align-items:center}.pkedit .qty input{min-width:0}.pko{display:flex;gap:6px;align-items:center;font-size:13.5px;white-space:nowrap}.pko input{accent-color:var(--accent);width:18px;height:18px;margin:0}
 @media (max-width:560px){.pkedit{grid-template-columns:1fr 1fr 32px}.pkedit .pko{grid-column:1}.pkedit [data-f=bb]{grid-column:2/4}.pkedit [data-rmp]{grid-column:3;grid-row:1}}
+.catf{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-top:-8px;padding-bottom:2px}.catf::-webkit-scrollbar{display:none}
+.cchip{flex:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 12px;font-size:13.5px;font-weight:600;white-space:nowrap;display:flex;gap:6px;align-items:baseline}.cchip .mono{color:var(--muted);font-size:11.5px}.cchip:hover{border-color:var(--accent)}
+.cchip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}.cchip[aria-pressed="true"] .mono{color:inherit;opacity:.8}
+.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.srch{flex:1 1 240px;position:relative;display:flex;align-items:center;min-width:0}.srch svg{position:absolute;left:11px;width:18px;height:18px;color:var(--muted);pointer-events:none}.srch input{padding-left:36px;width:100%;border-radius:12px}
+.seglab{align-self:center;font-size:12.5px;font-weight:600;color:var(--muted);padding:0 4px 0 6px}
+.rows .grp{display:flex;justify-content:space-between;padding:8px 16px 5px;font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);background:var(--sunk);border-bottom:1px solid var(--line)}
+.sl .grp{display:flex;justify-content:space-between;padding:12px 0 2px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-bottom:1px dashed var(--line)}
+.ghead{grid-column:1/-1;margin:6px 0 -4px;display:flex;gap:8px;align-items:baseline}
 .al{display:flex;flex-direction:column;gap:2px;min-width:0}
 .al b{font-weight:600;font-size:15px;color:var(--ink)}
 .btn.act.danger .al b{color:var(--bad)}
@@ -368,7 +376,7 @@ const KB=[
  [['horcic','kecup','majonez','tatarsk','pesto'],{loc:'spiz',days:300,open:30,openLoc:'lednice',unit:'g',cat:'Omáčky'}],
  [['sojova omacka','sriracha','worcester'],{loc:'spiz',days:730,open:180,unit:'ml',cat:'Omáčky'}],
  [['orech','mandle','kesu','arasid','seminka'],{loc:'spiz',days:180,open:60,unit:'g',cat:'Trvanlivé'}],
- [['koreni','pepr','paprika mleta','kmin','skorice','oregano'],{loc:'spiz',days:730,unit:'g',cat:'Koření'}],
+ [['koreni','pepr','paprika mleta','mleta paprika','sladka paprika','paprika sladka','uzena paprika','chilli','kari','curry','kurkum','muskat','bobkov','nove koreni','tymian','majoran','rozmaryn','kmin','skorice','oregano'],{loc:'spiz',days:730,unit:'g',cat:'Koření'}],
  [['vyvar','bujon','kureci vyvar','zeleninovy vyvar'],{loc:'spiz',days:365,open:4,openLoc:'lednice',unit:'ml',cat:'Trvanlivé'}],
  [['kava','caj'],{loc:'spiz',days:365,unit:'g',cat:'Trvanlivé'}],
  [['vino'],{loc:'spiz',days:730,open:4,openLoc:'lednice',unit:'ml',cat:'Nápoje'}],
@@ -455,7 +463,7 @@ let CFG={token:'',gist:'',lastSync:null};
 let SYNC={state:'off',msg:''};
 const lsGet=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
-try{const t=localStorage.getItem('sp-tab');if(t)S.tab=t;const l=localStorage.getItem('sp-loc');if(l)S.loc=l}catch(e){}
+try{const t=localStorage.getItem('sp-tab');if(t)S.tab=t;const l=localStorage.getItem('sp-loc');if(l)S.loc=l;S.sort=JSON.parse(localStorage.getItem('sp-sort')||'{}')||{};S.cat=localStorage.getItem('sp-cat')||''}catch(e){}
 const rid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
 const clean=o=>JSON.parse(JSON.stringify(o));
 function canon(o){if(Array.isArray(o))return'['+o.map(canon).join(',')+']';if(o&&typeof o==='object')return'{'+Object.keys(o).sort().map(k=>JSON.stringify(k)+':'+canon(o[k])).join(',')+'}';return JSON.stringify(o)}
@@ -573,7 +581,10 @@ function render(){
   $('#btn-add').hidden=S.tab!=='zasoby';
   const m=$('#main');
   let top=!connected()&&S.tab==='zasoby'?`<div class="banner">Data jsou zatím uložená jen v tomto prohlížeči. <button class="chip" data-act="settings">Připojit GitHub Gist</button> a uvidíš je na všech počítačích i v mobilu.</div>`:'';
+  const ae=document.activeElement;const aid=ae&&ae.id&&m.contains(ae)?ae.id:null;let s0=null,s1=null;try{s0=ae.selectionStart;s1=ae.selectionEnd}catch(_){}
   m.innerHTML=top+({zasoby:vZasoby,plan:vPlan,recepty:vRecepty,nakup:vNakup}[S.tab]||vZasoby)();
+  {const ch=m.querySelector('.cchip[aria-pressed="true"]');if(ch&&ch.dataset.v){const c=ch.parentElement;c.scrollLeft=Math.max(0,ch.offsetLeft-c.offsetLeft-c.clientWidth/2+ch.offsetWidth/2)}}
+  if(aid){const el=document.getElementById(aid);if(el){el.focus();try{if(s0!=null)el.setSelectionRange(s0,s1)}catch(_){}}}
 }
 function loading(c){return false}
 
@@ -585,21 +596,43 @@ function itemRow(it){
     <span class="meta"><span class="mono"${it.qtyGuess?' title="Množství je odhad"':''}>${fmtIt(it)}</span>${portions}${it.opened&&!ps?`<span class="tag open">${it.loc==='mrazak'?'načaté':'otevřené'} ${fmtDate(it.openedAt)}</span>`:''}${it.loc==='mrazak'&&it.frozenAt?`<span>zamraženo ${fmtDate(it.frozenAt)}</span>`:''}${it.guess?'<span class="tag" title="Datum spotřeby je odhad — zkontroluj na obalu">odhad data</span>':''}${it.example?'<span class="tag ex">ukázka</span>':''}</span></span>
     <span class="pill ${st}">${relDays(d)}</span></button><button class="take" data-act="consume" data-id="${h(it.id)}" title="Vzít část" aria-label="Vzít z ${h(it.name)}">−</button></li>`;
 }
+/* ---------- řazení, skupiny, hledání ---------- */
+const CATS=['Maso','Ryby','Uzeniny','Mléčné','Zelenina','Ovoce','Bylinky','Pečivo','Trvanlivé','Konzervy','Omáčky','Koření','Sladké','Nápoje','Hotové jídlo','Ostatní'];
+const catOf=it=>(it.cat&&it.cat!=='Ostatní')?it.cat:(kbFind(it.name)?.cat||it.cat||'Ostatní');
+const catIdx=c=>{const i=CATS.indexOf(c);return i<0?CATS.length-1:i};
+function qMatch(q,...fields){const t=norm(q).split(' ').filter(Boolean);if(!t.length)return true;const hay=' '+norm(fields.join(' '));return t.every(x=>hay.includes(x))}
+const SORTS={zasoby:[['exp','Trvanlivost'],['abc','A–Z'],['cat','Skupiny']],recepty:[['avail','Co uvařím'],['abc','A–Z'],['src','Podle zdroje']],nakup:[['added','Jak přibývaly'],['cat','Podle oddělení'],['abc','A–Z']]};
+const sortOf=k=>(S.sort&&S.sort[k])||SORTS[k][0][0];
+const qOf=k=>(S.q&&S.q[k])||'';
+const SRCH_IC='<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5l5 5"/></svg>';
+function toolsHtml(k,ph){return`<div class="tools">${ph?`<label class="srch">${SRCH_IC}<input type="search" id="q-${k}" data-q="${k}" value="${h(qOf(k))}" placeholder="${ph}" autocomplete="off" aria-label="${ph}"></label>`:''}<div class="seg" role="group" aria-label="Řazení"><span class="seglab">Řadit:</span>${SORTS[k].map(([v,l])=>`<button aria-pressed="${sortOf(k)===v}" data-act="sort" data-k="${k}" data-v="${v}">${l}</button>`).join('')}</div></div>`}
+function sortItems(arr,mode){const byExp=(a,b)=>expiry(a)<expiry(b)?-1:expiry(a)>expiry(b)?1:a.name.localeCompare(b.name,'cs');
+  if(mode==='abc')return arr.sort((a,b)=>a.name.localeCompare(b.name,'cs'));
+  if(mode==='cat')return arr.sort((a,b)=>catIdx(catOf(a))-catIdx(catOf(b))||catOf(a).localeCompare(catOf(b),'cs')||byExp(a,b));
+  return arr.sort(byExp)}
+function withGroups(arr,keyFn,rowFn){let out='',last=null;for(const x of arr){const k=keyFn(x);if(k!==last){const n=arr.filter(y=>keyFn(y)===k).length;out+=`<li class="grp"><span>${h(k)}</span><span class="mono">${n}</span></li>`;last=k}out+=rowFn(x)}return out}
+
 function vZasoby(){
   if(loading('items'))return`<div class="empty big"><span class="spinner"></span>Načítám zásoby…</div>`;
-  const urg=urgentItems();
+  const q=qOf('zasoby');const mode=sortOf('zasoby');const cats=CATS.filter(c=>S.items.some(i=>catOf(i)===c));const fc=S.cat&&cats.includes(S.cat)?S.cat:'';
+  const searching=!!norm(q)||!!fc;const match=it=>(!fc||catOf(it)===fc)&&qMatch(q,it.name,catOf(it),LOCS[it.loc]);
+  const urg=searching?[]:urgentItems();
   let html='';
   if(urg.length){
     html+=`<section class="urgent"><div class="sechead"><h2>Spotřebuj nejdřív</h2><span class="note">otevřené zbytky a věci, kterým končí trvanlivost do 3 dnů</span></div><div class="list">`+
     urg.slice(0,9).map(({it,d})=>{const rs=recipesUsing(it).slice(0,3);return`<div class="uc"><div class="top"><div><div class="nm">${h(it.name)}</div><div class="sub"><span class="mono">${fmtIt(it)}</span> · ${LOCS[it.loc]}${it.opened?' · otevřené':''}</div></div><span style="display:flex;gap:6px;align-items:center"><span class="pill ${status(d)}">${relDays(d)}</span><button class="take" style="margin:0" data-act="consume" data-id="${h(it.id)}" title="Vzít část" aria-label="Vzít z ${h(it.name)}">−</button></span></div>${rs.length?`<div class="chips">${rs.map(r=>`<button class="chip" data-act="plan-new" data-r="${h(r.id)}">→ ${h(r.name)}</button>`).join('')}</div>`:'<div class="sub">Žádný uložený recept to nepoužívá.</div>'}</div>`}).join('')+`</div></section>`;
   }
-  const pairs=dupPairs();
+  const pairs=searching?[]:dupPairs();
   if(pairs.length)html+=`<div class="dupbar"><span class="aic">${AIC.merge}</span><span class="dt">Některé věci máš možná zapsané dvakrát:</span>${pairs.slice(0,4).map(([a,b])=>`<button class="chip" data-act="merge" data-id="${h(a.id)}" data-other="${h(b.id)}">${h(a.name)} + ${h(b.name)}</button>`).join('')}${pairs.length>4?`<span class="note">a další ${pairs.length-4}</span>`:''}</div>`;
-  const cnt=k=>S.items.filter(i=>i.loc===k).length;
-  html+=`<div class="sechead"><div class="seg" role="group" aria-label="Úložiště">${[['all','Vše',S.items.length],['spiz','Spíž',cnt('spiz')],['lednice','Lednice',cnt('lednice')],['mrazak','Mrazák',cnt('mrazak')]].map(([k,l,c])=>`<button aria-pressed="${S.loc===k}" data-act="loc" data-v="${k}">${l} <span class="mono note">${c}</span></button>`).join('')}</div><span class="sp"></span>${S.items.some(i=>i.example)?`<button class="btn sm ghost" data-act="del-examples">Smazat ukázky</button>`:''}</div>`;
+  const cnt=k=>S.items.filter(i=>i.loc===k&&match(i)).length;
+  if(S.items.length)html+=toolsHtml('zasoby','Hledat v zásobách…');
+  if(cats.length>1)html+=`<div class="catf" role="group" aria-label="Filtrovat podle skupiny"><button class="cchip" aria-pressed="${!fc}" data-act="catf" data-v="">Všechny skupiny</button>${cats.map(c=>`<button class="cchip" aria-pressed="${fc===c}" data-act="catf" data-v="${h(c)}">${c}<span class="mono">${S.items.filter(i=>catOf(i)===c).length}</span></button>`).join('')}</div>`;
+  html+=`<div class="sechead"><div class="seg" role="group" aria-label="Úložiště">${[['all','Vše',S.items.filter(match).length],['spiz','Spíž',cnt('spiz')],['lednice','Lednice',cnt('lednice')],['mrazak','Mrazák',cnt('mrazak')]].map(([k,l,c])=>`<button aria-pressed="${S.loc===k}" data-act="loc" data-v="${k}">${l} <span class="mono note">${c}</span></button>`).join('')}</div><span class="sp"></span>${S.items.some(i=>i.example)?`<button class="btn sm ghost" data-act="del-examples">Smazat ukázky</button>`:''}</div>`;
   if(!S.items.length){return html+`<div class="empty big"><b style="font:700 18px var(--f-display)">Zatím tu nic není</b><span>Po nákupu přidej položky ručně, vlož seznam textem nebo nahraj soubor vytvořený z účtenky. Trvanlivost doplním podle typu potraviny a můžeš ji kdykoli přepsat.</span><button class="btn pri" data-act="add-open">+ Přidat nákup</button></div>`}
   const locs=S.loc==='all'?['spiz','lednice','mrazak']:[S.loc];
-  html+=`<div class="cols">`+locs.map(l=>{const arr=S.items.filter(i=>i.loc===l).sort((a,b)=>expiry(a)<expiry(b)?-1:1);return`<section class="store" data-loc="${l}"><div class="sh"><span class="ic">${LOC_IC[l]}</span><b>${LOCS[l]}</b><span class="note mono">${arr.length} ${plural(arr.length,'položka','položky','položek')}</span></div>${arr.length?`<ul class="rows">${arr.map(itemRow).join('')}</ul>`:`<div class="empty">Prázdno.</div>`}</section>`}).join('')+`</div>`;
+  const cols=locs.map(l=>({l,arr:sortItems(S.items.filter(i=>i.loc===l&&match(i)),mode)})).filter(c=>!searching||c.arr.length||S.loc!=='all');
+  if(searching&&!cols.some(c=>c.arr.length))return html+(norm(q)?`<div class="empty big">Nic jsem nenašel pro „${h(q)}“${fc?` ve skupině ${h(fc)}`:''}.${fc?'<button class="btn ghost" data-act="catf" data-v="">Hledat ve všech skupinách</button>':''}<button class="btn" data-act="add-named">+ Přidat „${h(q)}“ do zásob</button></div>`:`<div class="empty big">Ve skupině ${h(fc)} tady nic není.</div>`);
+  html+=`<div class="cols">`+cols.map(({l,arr})=>`<section class="store" data-loc="${l}"><div class="sh"><span class="ic">${LOC_IC[l]}</span><b>${LOCS[l]}</b><span class="note mono">${arr.length} ${plural(arr.length,'položka','položky','položek')}</span></div>${arr.length?`<ul class="rows">${mode==='cat'?withGroups(arr,catOf,itemRow):arr.map(itemRow).join('')}</ul>`:`<div class="empty">${searching?'Tady nic.':'Prázdno.'}</div>`}</section>`).join('')+`</div>`;
   return html;
 }
 
@@ -610,16 +643,20 @@ function vRecepty(){
   let cur=S.src||'all';if(cur!=='all'&&cur!=='none'&&!srcs.includes(cur))cur=S.src='all';
   const filt=srcs.length?`<select id="src-f" style="width:auto;max-width:100%" aria-label="Zdroj receptu"><option value="all">Všechny zdroje</option>${srcs.map(x=>`<option value="${h(x)}" ${cur===x?'selected':''}>${h(x)}</option>`).join('')}<option value="none" ${cur==='none'?'selected':''}>Bez zdroje</option></select>`:'';
   let html=`<div class="sechead"><h2>Recepty</h2><span class="note">množství jsou na uvedený počet porcí; při plánování se přepočítají</span><span class="sp"></span>${filt}${canImp?'<button class="btn" data-act="recipe-import">Importovat soubor</button>':''}<button class="btn pri" data-act="recipe-edit">+ Nový recept</button></div>`;
+  if(S.recipes.length)html+=toolsHtml('recepty','Hledat recept, surovinu nebo kuchařku…');
   if(!S.recipes.length)return html+`<div class="empty big">Ulož si první recept — suroviny piš po řádcích, třeba „200 g zelí“.${canImp?' Recepty z kuchařky vyfoť a pošli Claudovi, vytvoří ti importní soubor.':''}<button class="btn pri" data-act="recipe-edit">+ Nový recept</button></div>`;
-  const list=S.recipes.filter(r=>cur==='all'||(cur==='none'?!(r.source||'').trim():(r.source||'').trim()===cur));
-  const rs=list.map(r=>({r,a:recipeAvail(r)})).sort((x,y)=>y.a.ratio-x.a.ratio||x.r.name.localeCompare(y.r.name,'cs'));
-  html+=`<div class="grid">`+rs.map(({r,a})=>`<article class="card"><div class="sechead"><span class="t">${h(r.name)}</span>${r.example?'<span class="tag ex">ukázka</span>':''}</div>
+  const rq=qOf('recepty');const rmode=sortOf('recepty');const srcKey=r=>(r.source||'').trim()||'Bez zdroje';
+  const list=S.recipes.filter(r=>(cur==='all'||(cur==='none'?!(r.source||'').trim():(r.source||'').trim()===cur))&&qMatch(rq,r.name,r.source||'',(r.ingredients||[]).map(g=>g.name).join(' ')));
+  const byName=(x,y)=>x.r.name.localeCompare(y.r.name,'cs');
+  const rs=list.map(r=>({r,a:recipeAvail(r)})).sort(rmode==='abc'?byName:rmode==='src'?(x,y)=>(srcKey(x.r)==='Bez zdroje')-(srcKey(y.r)==='Bez zdroje')||srcKey(x.r).localeCompare(srcKey(y.r),'cs')||byName(x,y):(x,y)=>y.a.ratio-x.a.ratio||byName(x,y));
+  let lastSrc=null;
+  html+=`<div class="grid">`+rs.map(({r,a})=>`${rmode==='src'&&srcKey(r)!==lastSrc?`<h3 class="ghead">${h(lastSrc=srcKey(r))} <span class="mono">${rs.filter(x=>srcKey(x.r)===srcKey(r)).length}</span></h3>`:''}<article class="card"><div class="sechead"><span class="t">${h(r.name)}</span>${r.example?'<span class="tag ex">ukázka</span>':''}</div>
     ${srcLine(r)}
     <div class="note">${r.servings} ${plural(r.servings,'porce','porce','porcí')} · doma máš ${a.ok} z ${a.total} ${plural(a.total,'suroviny','surovin','surovin')}</div>
     <div class="bar"><i style="width:${Math.round(a.ratio*100)}%"></i></div>
     <ul class="ings">${a.rows.map(g=>`<li><span class="q">${qtyTxt(g.qty,g.unit)}</span><span>${h(g.name)}</span><span class="st ${g.st}">${g.st==='have'?'✓':g.st==='part'?'část':g.st==='taste'?'':'chybí'}</span></li>`).join('')}</ul>
     <div class="acts"><button class="btn sm pri" data-act="plan-new" data-r="${h(r.id)}">Naplánovat</button><button class="btn sm" data-act="recipe-view" data-id="${h(r.id)}">Postup</button><button class="btn sm ghost" data-act="recipe-edit" data-id="${h(r.id)}">Upravit</button></div></article>`).join('')+`</div>`;
-  if(!rs.length)html+=`<div class="empty">V tomhle zdroji zatím nic není.</div>`;
+  if(!rs.length)html+=`<div class="empty">${norm(rq)?`Žádný recept neodpovídá „${h(rq)}“.`:'V tomhle zdroji zatím nic není.'}</div>`;
   return html;
 }
 
@@ -641,12 +678,14 @@ function vPlan(){
 
 function vNakup(){
   if(loading('shop'))return`<div class="empty big"><span class="spinner"></span>Načítám seznam…</div>`;
-  const list=[...S.shop].sort((a,b)=>(a.checked-b.checked)||(a.createdAt||'').localeCompare(b.createdAt||''));
+  const smode=sortOf('nakup');const scat=x=>catOf({name:x.name,cat:x.cat});
+  const list=[...S.shop].sort((a,b)=>(a.checked-b.checked)||(smode==='abc'?a.name.localeCompare(b.name,'cs'):smode==='cat'?(catIdx(scat(a))-catIdx(scat(b))||a.name.localeCompare(b.name,'cs')):(a.createdAt||'').localeCompare(b.createdAt||'')));
   const done=list.filter(s=>s.checked).length;
   let html=`<div class="sechead"><h2>Nákupní seznam</h2><span class="note">otevři Fridgle v mobilu a odškrtávej přímo v obchodě — díky gistu je seznam všude stejný</span></div>
   <div class="shopbar"><label class="f" style="flex-direction:row;align-items:center;gap:8px">Doplnit podle jídelníčku na <select id="horizon" style="width:auto">${[3,5,7,10,14].map(n=>`<option value="${n}" ${S.horizon===n?'selected':''}>${n} dní</option>`).join('')}</select></label><button class="btn pri" data-act="shop-gen">Vytvořit seznam z plánu</button><button class="btn" data-act="shop-copy" ${list.length?'':'disabled'}>Kopírovat jako text</button>${navigator.share?`<button class="btn" data-act="shop-share" ${list.length?'':'disabled'}>Sdílet…</button>`:''}</div>
+  ${S.shop.length?toolsHtml('nakup',''):''}
   <div class="receipt"><div class="rh"><b>Nákup</b><span class="note">${fmtDate(today())} · ${list.length-done} zbývá</span></div><hr class="dash">
-  ${list.length?`<ul class="sl">${list.map(s=>`<li class="si ${s.checked?'done':''}"><input type="checkbox" id="chk-${h(s.id)}" data-act="shop-check" data-id="${h(s.id)}" ${s.checked?'checked':''}><label class="n" for="chk-${h(s.id)}">${h(s.name)}${s.reason?`<small>${h(s.reason)}</small>`:''}</label><span class="q">${s.qty?fmtQty(s.qty,s.unit):''}</span><button class="x" data-act="shop-del" data-id="${h(s.id)}" aria-label="Odebrat ${h(s.name)}">×</button></li>`).join('')}</ul>`:`<div class="note" style="text-align:center;padding:10px 0">Seznam je prázdný. Vytvoř ho z jídelníčku, nebo připiš položku níž.</div>`}
+  ${list.length?`<ul class="sl">${(()=>{const row=s=>`<li class="si ${s.checked?'done':''}"><input type="checkbox" id="chk-${h(s.id)}" data-act="shop-check" data-id="${h(s.id)}" ${s.checked?'checked':''}><label class="n" for="chk-${h(s.id)}">${h(s.name)}${s.reason?`<small>${h(s.reason)}</small>`:''}</label><span class="q">${s.qty?fmtQty(s.qty,s.unit):''}</span><button class="x" data-act="shop-del" data-id="${h(s.id)}" aria-label="Odebrat ${h(s.name)}">×</button></li>`;const open=list.filter(x=>!x.checked),dn=list.filter(x=>x.checked);return(smode==='cat'?withGroups(open,scat,row):open.map(row).join(''))+(dn.length&&smode==='cat'?`<li class="grp"><span>V košíku</span><span class="mono">${dn.length}</span></li>`:'')+dn.map(row).join('')})()}</ul>`:`<div class="note" style="text-align:center;padding:10px 0">Seznam je prázdný. Vytvoř ho z jídelníčku, nebo připiš položku níž.</div>`}
   <hr class="dash"><form class="addline" id="shop-add"><input type="text" id="shop-new" placeholder="např. 2 l mléko" autocomplete="off"><button class="btn">Přidat</button></form>
   ${done?`<hr class="dash"><div class="shopbar"><button class="btn pri sm" data-act="shop-stock">Koupené přidat do zásob (${done})</button><button class="btn sm ghost" data-act="shop-clear">Smazat odškrtnuté</button></div>`:''}
   </div>`;
@@ -812,7 +851,7 @@ async function thaw(id,idx){const it=S.items.find(x=>x.id===id);if(!it)return;co
   toast(`Rozmrazeno ${fmtQty(amt,it.unit)} — přesunuto do lednice, spotřebuj do zítřka.`)}
 function itemFormHtml(it){return`<label class="f">Název<input type="text" id="e-n" value="${h(it.name)}" autocomplete="off" placeholder="např. Kuřecí prsa"></label>
   <div class="fgrid"><label class="f">Množství<span class="qty"><input type="number" id="e-q" step="any" min="0" value="${it.qty}" ${it.id&&getPacks(it)?'disabled title="Součet balení — uprav v Upravit balení"':''}><select id="e-u" ${it.id&&getPacks(it)?'disabled':''}>${['g','ml','ks','porce'].map(u=>`<option ${u===it.unit?'selected':''}>${u}</option>`).join('')}</select></span></label>
-  <label class="f">Umístění<select id="e-l">${Object.entries(LOCS).map(([k,v])=>`<option value="${k}" ${k===it.loc?'selected':''}>${v}</option>`).join('')}</select></label></div>
+  <label class="f">Umístění<select id="e-l">${Object.entries(LOCS).map(([k,v])=>`<option value="${k}" ${k===it.loc?'selected':''}>${v}</option>`).join('')}</select></label><label class="f">Skupina<select id="e-c">${CATS.map(c=>`<option ${c===catOf(it)?'selected':''}>${c}</option>`).join('')}</select></label></div>
   <div class="fgrid"><label class="f">Spotřebovat do<input type="date" id="e-b" value="${it.bestBefore||''}"></label>
   <label class="f">Po otevření vydrží (dní)<input type="number" id="e-o" min="0" step="1" value="${it.openDays??''}" placeholder="nemění se"></label>
   ${!it.id?`<label class="f">Balení <input type="text" id="e-p" value="" placeholder="2x500 nebo 50+200" autocomplete="off"></label>`:getPacks(it)?`<div class="f"><span>Balení</span><span class="mono" style="font-weight:400;color:var(--ink);padding-top:8px">${fmtPacks(it,getPacks(it))}</span></div>`:''}</div>
@@ -821,14 +860,14 @@ function itemFormHtml(it){return`<label class="f">Název<input type="text" id="e
   ${it.id&&getPacks(it)?'':`<label class="f" style="flex-direction:row;gap:8px;align-items:center;font-weight:500"><input type="checkbox" id="e-op" ${it.opened?'checked':''}> Otevřené od <input type="date" id="e-od" value="${it.openedAt||today()}" style="width:auto"></label>`}
   <div class="note" id="e-hint"></div><div id="e-dup"></div>`}
 function bindItemForm(id,it){
-  const touched=new Set();['#e-u','#e-l','#e-b','#e-o'].forEach(s=>$(s).addEventListener('input',()=>touched.add(s)));
+  const touched=new Set();['#e-u','#e-l','#e-b','#e-o','#e-c'].forEach(s=>$(s).addEventListener('input',()=>touched.add(s)));
   $('#e-b').addEventListener('input',()=>{$('#e-g').checked=false});
-  const applyEst=(e,force)=>{const loc=(force||!touched.has('#e-l'))?e.loc:$('#e-l').value;if(force||!touched.has('#e-l'))$('#e-l').value=loc;if(!id&&(force||!touched.has('#e-u')))$('#e-u').value=e.unit;if(force||!touched.has('#e-b')){$('#e-b').value=addDays(today(),loc==='mrazak'?(e.freeze||180):e.days);$('#e-g').checked=true}if(force||!touched.has('#e-o'))$('#e-o').value=e.open??''};
+  const applyEst=(e,force)=>{if(force||!touched.has('#e-c'))$('#e-c').value=e.cat&&CATS.includes(e.cat)?e.cat:'Ostatní';const loc=(force||!touched.has('#e-l'))?e.loc:$('#e-l').value;if(force||!touched.has('#e-l'))$('#e-l').value=loc;if(!id&&(force||!touched.has('#e-u')))$('#e-u').value=e.unit;if(force||!touched.has('#e-b')){$('#e-b').value=addDays(today(),loc==='mrazak'?(e.freeze||180):e.days);$('#e-g').checked=true}if(force||!touched.has('#e-o'))$('#e-o').value=e.open??''};
   const hint=()=>{const e=kbFind($('#e-n').value);$('#e-hint').innerHTML=e?`Typicky: ${LOCS[e.loc].toLowerCase()}, ${e.days} ${plural(e.days,'den','dny','dní')}${e.open!=null?`, po otevření ${e.open}`:''}${e.freeze?`, v mrazáku ${Math.round(e.freeze/30)} měs.`:''}.${id?' <button class="chip" id="e-apply">Použít odhad</button>':' Doplnil jsem to do formuláře, klidně přepiš.'}`:($('#e-n').value.trim()?'Neznám typickou trvanlivost — vyplň ji podle obalu.':'Napiš název a trvanlivost doplním podle typu potraviny.');const b=$('#e-apply');if(b)b.onclick=()=>applyEst(e,true);if(e&&!id)applyEst(e,false)};
   const dupU=()=>{if(id)return;const n=$('#e-n').value.trim();const c=n?dupFor({name:n,unit:$('#e-u').value,loc:$('#e-l').value}):null;const oi=$('#e-dup input');const keep=oi?{id:oi.value,on:oi.checked}:null;$('#e-dup').innerHTML=c?dupLine(c,keep):''};
   $('#e-n').addEventListener(id?'change':'input',()=>{hint();dupU()});['#e-u','#e-l'].forEach(x=>$(x).addEventListener('change',dupU));hint();dupU();
   $('#e-ok').onclick=async()=>{const name=$('#e-n').value.trim();if(!id&&!name){toast('Napiš název položky.');$('#e-n').focus();return}
-    const p={name:name||it.name,qty:+$('#e-q').value||0,unit:$('#e-u').value,loc:$('#e-l').value,bestBefore:$('#e-b').value||it.bestBefore,openDays:$('#e-o').value===''?null:+$('#e-o').value,opened:!!$('#e-op')?.checked,openedAt:$('#e-op')?.checked?($('#e-od').value||today()):null,guess:$('#e-g').checked,qtyGuess:$('#e-qg').checked};
+    const p={name:name||it.name,qty:+$('#e-q').value||0,unit:$('#e-u').value,loc:$('#e-l').value,cat:$('#e-c').value,bestBefore:$('#e-b').value||it.bestBefore,openDays:$('#e-o').value===''?null:+$('#e-o').value,opened:!!$('#e-op')?.checked,openedAt:$('#e-op')?.checked?($('#e-od').value||today()):null,guess:$('#e-g').checked,qtyGuess:$('#e-qg').checked};
     if(id&&getPacks(it)){delete p.qty;delete p.unit;delete p.opened;delete p.openedAt}else if(!id){const list=packList(p.qty,$('#e-p').value);if(list){p.packs=list.map(q=>({q}));p.qty=r3(list.reduce((a,b)=>a+b,0))}}
     if(p.loc==='mrazak'&&it.loc!=='mrazak')p.frozenAt=today();
     if(id){closeSheet();await patch('items',id,p);toast('Uloženo')}
@@ -952,6 +991,9 @@ document.addEventListener('click',async e=>{
     case'item-del':if(b.dataset.armed){closeSheet();await del('items',id);toast('Smazáno')}else{b.dataset.armed='1';const l=b.querySelector('.al b');if(l){l.textContent='Klepni znovu pro smazání';b.querySelector('.al').insertAdjacentHTML('beforeend','<small>položka zmizí ze zásob</small>')}else b.textContent='Klepni znovu pro smazání'}break;
     case'add-open':addSheet();break;
     case'settings':settingsSheet();break;
+    case'catf':S.cat=b.dataset.v;try{localStorage.setItem('sp-cat',S.cat)}catch(_){}render();break;
+    case'sort':S.sort={...(S.sort||{}),[b.dataset.k]:b.dataset.v};try{localStorage.setItem('sp-sort',JSON.stringify(S.sort))}catch(_){}render();break;
+    case'add-named':{const nm=qOf('zasoby');addTab='manual';addSheet();const inp=$('#e-n');if(inp){inp.value=cap(nm.trim());inp.dispatchEvent(new Event('input',{bubbles:true}))}break}
     case'export':exportBackup();break;
     case'import-open':importSheet();break;
     case'shop-share':try{await navigator.share({title:'Nákup',text:shopText()})}catch(_){}break;
@@ -976,7 +1018,8 @@ document.addEventListener('change',async e=>{
   if(t.id==='src-f'){S.src=t.value;render()}
 });
 document.addEventListener('submit',async e=>{if(e.target.id!=='shop-add')return;e.preventDefault();const v=$('#shop-new').value;const p=parseLine(v);if(!p)return;const hasQty=/\d/.test(v);await put('shop',{name:p.name,qty:hasQty?p.qty:null,unit:hasQty?p.unit:null,checked:false,auto:false,reason:'',createdAt:new Date().toISOString()});const inp=$('#shop-new');if(inp){inp.value='';inp.focus()}});
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
+document.addEventListener('input',e=>{const k=e.target&&e.target.dataset&&e.target.dataset.q;if(k){S.q={...(S.q||{}),[k]:e.target.value};render()}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(e.target&&e.target.dataset&&e.target.dataset.q&&!$('#ov')){S.q={...(S.q||{}),[e.target.dataset.q]:''};render();return}closeSheet()}});
 boot();
 </script>
 </body>
